@@ -1,0 +1,341 @@
+---
+title: "MFE PROJECT 2022-23"
+author: "Gagan Singhal"
+date: "2023-05-13"
+output:
+  word_document: default
+  ppt_document: powerpoint_presentation
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(dplyr)
+library(tidyr)
+library(knitr)
+library(readxl)
+library(cluster)
+library(colorspace)
+library(combinat)
+library(cpp11)
+library(dbplyr)
+library(dplyr)
+library(fAsianOptions)
+library(fBasics)
+library(fOptions)
+library(forcats)
+library(ggplot2)
+library(gss)
+library(lubridate)
+library(magmaR)
+library(markdown)
+library(MASS)
+library(misc3d)
+library(plot3D)
+library(plotly)
+library(plotrix)
+library(plyr)
+library(prob)
+library(purrr)
+library(RColorBrewer)
+library(Rcpp)
+library(readr)
+library(reshape2)
+library(rmarkdown)
+library(scatterplot3d)
+library(tidyverse)
+library(timeDate)
+library(timeSeries)
+library(viridis)
+library(viridisLite)
+library(graphics)
+library(grDevices)
+```
+
+```{r}
+suppressWarnings({
+data <- read_excel("D:\\Sem 2\\Mathematics for Engineers - II\\Project\\1. Startup Datasets\\Final Project.xlsx")
+is.na(data)
+summary(data)
+})
+```
+This Summary shows we have 1342 NA values in dataset.
+  
+#### Droping NA values from the dataset(data) using drop 'na' function
+```{r}
+startup<-data %>% drop_na()
+summary(startup)
+```
+
+# Distribution of amount of investment made in several years
+
+```{r}
+startup$Year <- as.integer(format(as.Date(startup$Date), "%Y"))
+investment_by_year <- aggregate(Amount ~ Year, data = startup, FUN = sum)
+max_investment_year <- investment_by_year$Year[which.max(investment_by_year$Amount)]
+investment_by_year$Percentage <- investment_by_year$Amount / sum(investment_by_year$Amount) * 100
+labels <- paste(investment_by_year$Year, "(", round(investment_by_year$Percentage, 1), "%)", sep = "");labels
+pie(investment_by_year$Amount, labels = labels, main = "Figure 1. Investment by Year",col = brewer.pal(9, "Blues"))
+```
+  
+A pie chart showing the investment amounts for different years, and each year will be labeled with its percentage of the total investment. The year with the highest investment amount will be highlighted in the chart.
+
+```{r}
+ggplot(investment_by_year, aes(x = Year, y = Amount)) +
+  geom_line() +
+  labs(x = "Year", y = "Investment Amount", title = "Figure 2. Investment Amount by Year") +
+  geom_text(aes(label = paste("$", Amount)), vjust = -1.2, hjust = +0.6, size = 3, color = "blue") +
+  geom_point(size = 3, color = "black") +
+  theme_minimal()
+```
+  
+A line graph that shows the investment amounts for different years. The year with the highest investment amount will be highlighted in the graph, and the investment amounts will be displayed as labels on the graph.
+
+# Distribution of number of startups over several years
+
+```{r}
+startup$Year <- as.integer(substr(startup$Date, 1, 4))
+startups_by_year <- aggregate(Startup_name ~ Year, data = startup, FUN = length)
+max_funded_year <- startups_by_year$Year[which.max(startups_by_year$Startup_name)]
+ggplot(startups_by_year, aes(x = Year, y = Startup_name, fill = as.factor(Year))) +
+  geom_bar(stat = "identity") +
+  labs(x = "Year", y = "Number of Startups", title = "Figure 3. Number of Startups Funded by Year") +
+  scale_fill_brewer(palette = "Set3")
+```
+  
+# Top 15 Startups that got multiple rounds of funding
+
+```{r}
+startup_rounds <- aggregate(Investment_Type ~ Startup_name, data = startup, FUN = function(x) length(unique(x)))
+startup_multiple_rounds <- subset(startup_rounds, Investment_Type > 1);
+top_15_startups <- head(startup_multiple_rounds[order(startup_multiple_rounds$Investment_Type, decreasing = TRUE), ], 15);top_15_startups
+ggplot(top_15_startups, aes(x = Startup_name, y = Investment_Type)) +
+  geom_bar(stat = "identity", fill = magma(15), color = "black") +
+  labs(x = "Startup Name", y = "Number of Rounds", title = "Figure 4. Top 15 Startups with Multiple Funding Rounds") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+  
+A bar chart that displays the number of funding rounds for each startup. Only the startups with multiple rounds will be shown in the chart. The x-axis represents the startup names, and the y-axis represents the number of rounds. The chart will help identify the startups that have received multiple rounds of funding.
+
+# Top 15 vertical with highest number of startups
+
+```{r}
+top_verticals <- head(sort(table(startup$Vertical), decreasing = TRUE), 15);top_verticals
+ggplot(data.frame(vertical = names(top_verticals), count = as.numeric(top_verticals)), 
+       aes(x = count, y = reorder(vertical, -count))) +
+  geom_bar(stat = "identity", fill = rainbow(15), color = "black") +
+  labs(x = "Number of Startups", y = "Vertical", title = "Figure 5. Top 15 Verticals with the Highest Number of Startups") +
+  theme(axis.text.y = element_text(hjust = +1.0))
+```
+  
+The x-axis represents the number of startups, and the y-axis represents the verticals. The verticals are reordered based on the count of startups in descending order.
+
+# Cities with highest number of startups
+
+```{r}
+top_cities <- head(sort(table(startup$City), decreasing = TRUE), 15)
+top_startup <- subset(startup, startup$City %in% names(top_cities));top_cities
+ggplot(top_startup, aes(x = reorder(City, -table(City)[City]), fill = City)) +
+  geom_bar() +
+  labs(x = "City", y = "Number of Startups", title = "Figure 6. Top 15 Cities with Highest Number of Startups") +
+  scale_fill_discrete(name = "City") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+  
+The x-axis represents the cities, and the y-axis represents the number of startups. The bars are filled with colors based on the city variable to differentiate the bars. The bar plot displays the number of startups in each of the top 15 cities, allowing for easy comparison and identification of the city with the highest number of startups. The x-axis labels are angled for better readability when there are many cities.
+
+# Most Popular Investment type 
+
+```{r}
+top_investment_types <- head(sort(table(startup$Investment_Type), decreasing = TRUE), 15)
+top_startup <- subset(startup, startup$Investment_Type %in% names(top_investment_types));
+ggplot(top_startup, aes(x = Investment_Type, fill = Investment_Type)) +
+  geom_bar() +
+  labs(x = "Investment Type", y = "Count", title = "Figure 7. Histogram of Top 15 Most Popular Investment Types") +
+  scale_fill_discrete(name = "Investment Type") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+  
+The x-axis represents the investment types, and the y-axis represents the count of startups. The bars are filled with colors based on the investment type variable to differentiate the bars. The histogram displays the distribution of startups across the top 15 most popular investment types, allowing for easy comparison and identification of the investment type that is most commonly used. The x-axis labels are angled for better readability when there are many investment types.
+
+## Seed type investment in different cities
+
+```{r}
+data_seed <- startup[startup$Investment_Type == "Seed", ]
+a<-aggregate(Startup_name ~ City, data_seed, length);a
+summary(a)
+```
+
+## Private Equity type investment in different cities
+
+```{r}
+data_seed <- startup[startup$Investment_Type == "Private Equity", ]
+a<-aggregate(Startup_name ~ City, data_seed, length);a
+summary(a)
+```
+
+## Pre-Series A type of investment in different cities
+
+```{r}
+data_seed <- startup[startup$Investment_Type == "Pre-Series A", ]
+a<-aggregate(Startup_name ~ City, data_seed, length);a
+summary(a)
+```
+  
+## Series A type of investment in different cities
+  
+```{r}
+data_seed <- startup[startup$Investment_Type == "Series A", ]
+a<-aggregate(Startup_name ~ City, data_seed, length);a
+summary(a)
+```
+
+# Distribution of number of startups in different months
+
+```{r}
+startup$Date <- as.Date(startup$Date)
+startup$Month <- format(startup$Date, "%B")
+startup_count <- table(startup$Month)
+highest_month <- names(startup_count)[which.max(startup_count)]
+ggplot(startup, aes(x = Month, fill = Month)) +
+  geom_bar() +
+  labs(x = "Months", y = "Number of Startups", title = "Figure 8. Number of Startups Funded by Month") +
+  scale_x_discrete(labels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")) +
+  scale_fill_manual(values = c("#F78F6F", "#FFA500", "#FFD700", "#FF6347", "#FF4500", "#FF7F50",
+                                        "#FF8C00", "#FFA07A", "#CD5C5C", "#FF7256", "#FF6347", "#FF0000")) +
+                                          theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+  
+The x-axis represents the months, and the y-axis represents the number of startups funded. The bars correspond to the count of startups for each month. The bar chart displays the number of startups funded by month, allowing you to identify the month with the highest number of startups funded. The x-axis labels show the corresponding month names.
+
+# Calculate summary statistics
+
+```{r}
+num_startups <- nrow(startup)
+num_investors <- startup %>% distinct(Investors_Name) %>% nrow()
+total_investment <- sum(startup$Amount)
+num_cities <- startup %>% distinct(City) %>% nrow()
+```
+
+# Print summary information
+
+```{r}
+cat("Summary of the Dataset:\n")
+cat("Number of Startups:", num_startups, "\n")
+cat("Number of Investors:", num_investors, "\n")
+cat("Total Investment:", total_investment, "\n")
+cat("Number of Cities:", num_cities, "\n")
+```
+
+# Calculate average investment amount by city
+
+```{r}
+avg_investment <- aggregate(Amount ~ City, data = startup, FUN = mean)
+print(avg_investment)
+```
+
+# How does the number of investments vary by year?
+
+```{r}
+startup$Date <- as.Date(startup$Date)
+startup$Year <- format(startup$Date, "%Y")
+investment_count <- table(startup$Year)
+plot(as.numeric(names(investment_count)), investment_count, type = "b", 
+     xlab = "Year", ylab = "Number of Investments",
+     main = "Figure 9. Number of Investments by Year")
+```
+  
+A line plot with points that shows number of investments by year . The x-axis represents the year, and the y-axis represents the number of investments.
+  
+# Are there any outliers or anomalies in the investment amounts?
+
+```{r}
+q1 <- quantile(startup$Amount, 0.25)
+q3 <- quantile(startup$Amount, 0.75)
+iqr <- q3 - q1
+upper <- q3 + 1.5 * iqr
+lower <- q1 - 1.5 * iqr
+outliers <- startup$Amount[startup$Amount > upper | startup$Amount < lower]
+
+cat("Number of outliers in investment amounts:", length(outliers), "\n")
+cat("Outliers in investment amounts:\n")
+print(outliers)
+```
+  
+# A colorful line graph for the amount of investment made over time  
+```{r}
+ggplot(data = startup, aes(x = Date, y = Amount, color = Amount)) +
+  geom_line() +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(x = "Date", y = "Amount of Investment") +
+  theme_minimal()
+```
+Figure 10.
+  
+# How many investments were made in each vertical in a specific time period?
+
+```{r}
+startup$Date <- as.Date(startup$Date)
+```
+
+### From year 2015-2017:
+
+```{r}
+start_date <- as.Date("2015-01-01")
+end_date <- as.Date("2017-12-31")
+investments_period <- subset(startup, Date >= start_date & Date <= end_date)
+investments_count <- table(investments_period$Vertical)
+sorted_investments <- sort(investments_count, decreasing = TRUE)
+top_20_verticals <- names(sorted_investments)[1:20]
+investments_top_20 <- subset(investments_period, Vertical %in% top_20_verticals)
+investments_count_top_20 <- table(investments_top_20$Vertical)
+ggplot(data = data.frame(Vertical = names(investments_count_top_20), Count = as.vector(investments_count_top_20)), aes(x = Vertical, y = Count)) +
+  geom_bar(stat = "identity", fill = "black", width = 0.5) +
+  labs(x = "Vertical", y = "Number of Investments", title = "Figure 11. Number of Investments per Vertical (Top 20)") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+  
+A bar chart where the x-axis represents the verticals and the y-axis represents the number of investments.  
+  
+### From year 2017-2019:
+
+```{r}
+start_date <- as.Date("2017-01-01")
+end_date <- as.Date("2019-12-31")
+investments_period <- subset(startup, Date >= start_date & Date <= end_date)
+investments_count <- table(investments_period$Vertical)
+sorted_investments <- sort(investments_count, decreasing = TRUE)
+top_20_verticals <- names(sorted_investments)[1:20]
+investments_top_20 <- subset(investments_period, Vertical %in% top_20_verticals)
+investments_count_top_20 <- table(investments_top_20$Vertical)
+ggplot(data = data.frame(Vertical = names(investments_count_top_20), Count = as.vector(investments_count_top_20)), aes(x = Vertical, y = Count)) +
+  geom_bar(stat = "identity", fill = "blue", width = 0.5) +
+  labs(x = "Vertical", y = "Number of Investments", title = "Figure 12. Number of Investments per Vertical (Top 20)") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+  
+A bar chart where the x-axis represents the verticals and the y-axis represents the number of investments.  
+  
+### From year 2019-2021:
+
+```{r}
+start_date <- as.Date("2019-01-01")
+end_date <- as.Date("2021-12-31")
+investments_period <- subset(startup, Date >= start_date & Date <= end_date)
+investments_count <- table(investments_period$Vertical)
+sorted_investments <- sort(investments_count, decreasing = TRUE)
+top_20_verticals <- names(sorted_investments)[1:20]
+investments_top_20 <- subset(investments_period, Vertical %in% top_20_verticals)
+investments_count_top_20 <- table(investments_top_20$Vertical)
+ggplot(data = data.frame(Vertical = names(investments_count_top_20), Count = as.vector(investments_count_top_20)), aes(x = Vertical, y = Count)) +
+  geom_bar(stat = "identity", fill = "darkgreen", width = 0.5) +
+  labs(x = "Vertical", y = "Number of Investments", title = "Figure 13. Number of Investments per Vertical (Top 20)") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+```
+  
+A bar chart where the x-axis represents the verticals and the y-axis represents the number of investments.
+
