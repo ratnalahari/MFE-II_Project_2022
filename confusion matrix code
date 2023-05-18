@@ -1,0 +1,33 @@
+library(caret)
+
+your_data <- read_csv("C:/Users/ratna/Downloads/Heart Failure Prediction.csv")
+
+# Convert categorical variables to dummy variables
+data2 <- as.data.frame(sapply(your_data, function(x) as.numeric(as.factor(x))))
+
+y <- data2[["Mortality"]]
+X <- subset(data2, select = -c(Mortality))
+
+# Split the dataset into training and testing sets
+set.seed(42)
+trainIndex <- createDataPartition(y, p = 0.8, list = FALSE)
+X_train <- X[trainIndex, ]
+X_test <- X[-trainIndex, ]
+y_train <- y[trainIndex]
+y_test <- y[-trainIndex]
+
+# Print the shape of the datasets
+print(paste("x_train shape:", dim(X_train)))
+print(paste("x_test shape:", dim(X_test)))
+print(paste("y_train shape:", length(y_train)))
+print(paste("y_test shape:", length(y_test)))
+print(paste("Number of classes (dead or alive):", length(unique(y_train))))
+
+# Fit the model and make predictions
+model <- train(X_train, y_train, method = "rf")
+predictions <- predict(model, X_test)
+
+# Calculate accuracy and print confusion matrix
+accuracy <- mean(predictions == y_test)
+confusion_matrix <- confusionMatrix(predictions, y_test)
+print(confusion_matrix$table)
